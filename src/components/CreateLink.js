@@ -1,7 +1,18 @@
 import React, { Component } from 'react'
 import gql from 'graphql-tag'
-import { graphql } from 'react-apollo'
+import { Mutation } from 'react-apollo'
+import { FEED_QUERY } from './LinkList'
 
+const POST_MUTATION = gql`
+  mutation PostMutation($description: String!, $url: String!) {
+    post(description: $description, url: $url) {
+      id
+      createdAt
+      description
+      url
+    }
+  }
+`
 class CreateLink extends Component {
   state = {
     description: '',
@@ -9,6 +20,7 @@ class CreateLink extends Component {
   }
 
   render() {
+    const { description, url } = this.state
     return (
       <div>
         <div className="flex flex-column mt3">
@@ -27,32 +39,24 @@ class CreateLink extends Component {
             placeholder="The URL for the link"
           />
         </div>
-        <button onClick={() => this._createLink()}>Submit</button>
+        <Mutation
+          mutation={POST_MUTATION}
+          variables={{ description, url }}
+          onCompleted={() => this.props.history.push('/')}
+          update={(store, { data: { post } }) => {
+            const data = store.readQuery({ query: FEED_QUERY })
+            data.feed.links.unshift(post)
+            store.writeQuery({
+              query: FEED_QUERY,
+              data
+            })
+          }}
+        >
+          {postMutation => <button onClick={postMutation}>Submit</button>}
+        </Mutation>
       </div>
     )
   }
-
-  _createLink = async () => {
-    const { description, url } = this.state
-    await this.props.postMutation({
-      variables: {
-        description,
-        url
-      }
-    })
-    this.props.history.push('/')
-  }
 }
 
-const POST_MUTATION = gql`
-  mutation PostMutation($description: String!, $url: String!) {
-    post(description: $description, url: $url) {
-      id
-      createdAt
-      description
-      url
-    }
-  }
-`
-
-export default graphql(POST_MUTATION, { name: 'postMutation' })(CreateLink)
+export default CreateLink
